@@ -14,7 +14,7 @@ flowchart LR
       DOM["Domain<br/>aggregates and value objects (pure PHP)"]
     end
     subgraph Outbound
-      DB["Adapters/Outbound/Persistence<br/>(Eloquent + Laravel migrations)"]
+      DB["Adapters/Outbound/Persistence<br/>(PDO/SQL repositories + Laravel migration)"]
       STO["Adapters/Outbound/Storage<br/>covers"]
       SEC["Adapters/Outbound/Security<br/>hash and token"]
     end
@@ -39,7 +39,7 @@ api/
 │   │                            # OverdueService, MostBorrowedReportService, LoginService, CreateLibrarianService
 │   ├── Adapters/
 │   │   ├── Inbound/Http/        # Controllers, FormRequests, JWT + role middleware, error mapping
-│   │   └── Outbound/            # Persistence/ (Eloquent models + repositories), Storage/, Security/, Time/
+│   │   └── Outbound/            # Persistence/ (PDO/SQL repositories), Storage/, Security/, Time/
 │   └── Providers/
 │       └── PortBindingsServiceProvider.php   # the only composition point
 ├── database/migrations/         # the only owner of the schema (ADR-001)
@@ -47,7 +47,7 @@ api/
 └── tests/                       # Unit/Domain, Unit/Application (fakes), Feature (contract), Integration, Arch
 ```
 
-Eloquent models live in `Adapters/Outbound/Persistence` and are **never** returned to the application layer: repositories map rows to
+PDO repositories live in `Adapters/Outbound/Persistence` and no row or framework type is **ever** returned to the application layer: repositories map rows to
 domain objects and back.
 
 ## 3. Aggregates

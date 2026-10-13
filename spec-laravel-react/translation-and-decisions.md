@@ -13,13 +13,14 @@ framework, ORM, hash algorithm and test-tool wording).
 |---|---|---|---|
 | TD-01 | New self-contained folder `spec-laravel-react/`; `spec-.net/` and `spec-python/` are left untouched | Keeps the original as a read-only reference and makes this diff reviewable | Whole folder |
 | TD-02 | **Documentation is English.** User-facing API messages, category names (`Novela`, `Ciencia`, …) and UI copy stay **Spanish** | The messages are observable behavior (CA-01.2, RNF-4, contract §1) and category names are seed *data*; translating them would change behavior, not documentation | Constitution Art. XI |
-| TD-03 | Hexagonal architecture is kept; Eloquent is an **adapter** only, domain is pure PHP | Constitution Arts. I–III are about dependency direction, not about the language | architecture.md |
+| TD-03 | Hexagonal architecture is kept; persistence is an **adapter** only (PDO/SQL, see TD-10), domain is pure PHP | Constitution Arts. I–III are about dependency direction, not about the language | architecture.md |
 | TD-04 | Tooling mapping (below) | Technology is translated, business is not | plan.md, constitution.md, tasks.md |
 | TD-05 | Auth is **JWT** behind the `TokenIssuer` port, not Sanctum/Passport | Plan D-11 already says JWT HS256; Sanctum would add a `personal_access_tokens` table, contradicting "six tables" | plan.md, data-model.md §0.1 |
 | TD-06 | Concurrency uses an atomic conditional `UPDATE` instead of a version token | The reference's version token has no column in `data-model.md`; the update gives the same observable guarantee with no schema change | ADR-002, architecture.md §4 |
 | TD-07 | Files renamed to English: `arquitectura-panoramica.md` → `architecture-overview.md`; ADR filenames translated | Consistency with the English documentation | Links inside the folder |
 | TD-08 | New `frontend.md` | The reference leaves the React side as a single "manual walkthrough" task (T-22); a spec-driven build needs it specified | frontend.md |
 | TD-09 | `DATABASE_URL` → Laravel `DB_*` variables; added `APP_ENV`, `VITE_API_BASE_URL` | Framework-native configuration for the same information | plan.md §2 |
+| TD-10 | Persistence uses plain SQL through PDO (Laravel's connection) instead of Eloquent | The critical rules are SQL (atomic conditional `UPDATE`, `CHECK`, partial indexes, trigram search); writing them directly keeps them reviewable, testable against a real PostgreSQL without the framework, and avoids Eloquent's plural tables, timestamps and implicit behavior (C-10) | plan D-03, architecture.md |
 
 ### Tooling mapping
 
@@ -27,7 +28,7 @@ framework, ORM, hash algorithm and test-tool wording).
 |---|---|---|---|
 | Language | C# 12 / .NET 8 | Python 3.12 | PHP 8.3 |
 | HTTP | ASP.NET Core Minimal API | FastAPI | Laravel (API-only) |
-| ORM / migrations | EF Core 8 + EF migrations | SQLAlchemy 2 + Alembic | Eloquent (adapter) + Laravel migrations |
+| ORM / migrations | EF Core 8 + EF migrations | SQLAlchemy 2 + Alembic | PDO/SQL (adapter) + one Laravel migration running `database/sql/library.sql` |
 | Password hash | BCrypt (12) | Argon2id | bcrypt (cost 12) |
 | Token | JWT HS256, 8 h | JWT HS256, 8 h | JWT HS256, 8 h (`firebase/php-jwt`) |
 | Unit / app tests | xUnit | pytest | Pest |
@@ -51,7 +52,7 @@ product owner (the instructor) if they ever answer a question; until then they a
 | C-07 | Cover route needs a Bearer token but `<img>` cannot send one; oversize/wrong type response; cover replacement | Frontend fetches as blob; oversize/wrong type → 422 `VALIDATION_ERROR`; old binary removed after commit | contract §3.4, §4, frontend §6, HU-03 | proposed |
 | C-08 | `/loans/overdue` vs `/loans/{id}` route collision (real in Laravel) | UUID-constrained params and literal routes declared first | contract §1, §3.6 | proposed |
 | C-09 | T-21 requires past/overdue loans created "only through the API", but the loan instant comes from the server clock | Optional `X-Demo-Now` header, honored only when `APP_ENV=demo`, ignored elsewhere | contract §5, plan D-14, T-21 | decided by the student |
-| C-10 | Laravel's skeleton and framework create tables beyond the "six tables"; Eloquent adds timestamps and plural names | Remove unused skeleton tables; JWT instead of Sanctum; `$timestamps=false`; explicit singular `$table`; `migrations` table treated as framework bookkeeping | data-model §0.1 | proposed (see R-1) |
+| C-10 | Laravel's skeleton and framework create tables beyond the "six tables"; Eloquent adds timestamps and plural names | Remove unused skeleton tables; JWT instead of Sanctum; `$timestamps=false`; no Eloquent models (TD-10), so no `$timestamps`/`$table` needed; `migrations` table stays in `public` as framework bookkeeping | data-model §0.1 | accepted |
 | C-11 | No error code for missing/expired token or for an unexpected failure | Added `UNAUTHENTICATED` (401) and `INTERNAL_ERROR` (500) to the single error body | contract §2 | confirm |
 | C-12 | Double return must "never add twice" but the mechanism is unspecified | Decided atomically with `UPDATE … WHERE returned_at IS NULL` | HU-07, ADR-002, contract §3.6 | proposed |
 
@@ -59,7 +60,7 @@ product owner (the instructor) if they ever answer a question; until then they a
 
 | ID | Risk | Mitigation / next step |
 |---|---|---|
-| R-1 | Laravel's `migrations` table and a non-default schema `library` can conflict: the migrator may look for `migrations` in `library` before that schema exists, or place it in `public` | Decide and prove in T-02. Candidate resolutions: (a) accept `migrations` inside `library` as a framework-owned seventh table and document it; (b) keep it in `public`. Choose by what actually works, then update `data-model.md` §0.1. Not decided yet |
+| R-1 | Laravel's `migrations` table and a non-default schema `library` can conflict | **Resolved:** the connection keeps `search_path=public`, so `migrations` lives in `public` (framework bookkeeping, not one of the six tables); all application SQL is schema-qualified (`library.*`). Chosen because it needs no framework override and was proven by running the schema against PostgreSQL 16 | resolved |
 | R-2 | Laravel's default exception renderers can leak a non-contract body (HTML 404/405/500, validation JSON) | One exception handler maps every `Throwable`; contract test walks error cases (T-16) |
 | R-3 | PHP's own upload limits can reject a 2 MB cover before the app sees it | Set `upload_max_filesize` and `post_max_size` ≥ 2 MB in the container; covered by T-15 evidence |
 | R-4 | `X-Demo-Now` is a time-forging feature | Honored only for `APP_ENV=demo`; a test proves it is ignored otherwise (T-21); never enabled in `infra` defaults |

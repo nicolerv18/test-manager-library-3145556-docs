@@ -9,7 +9,7 @@ How to build what [`spec.md`](spec.md) and [`constitution.md`](constitution.md) 
 |---|---|---|---|
 | D-01 | Backend language and runtime | PHP 8.3 | Challenge stack |
 | D-02 | HTTP framework | Laravel (current stable) in API-only mode | Contract in [`api-contract.md`](api-contract.md) |
-| D-03 | Persistence | Eloquent as an **adapter only** + Laravel migrations on PostgreSQL 16 | The schema belongs to the migrations (ADR-001) |
+| D-03 | Persistence | Plain SQL through PDO (Laravel's connection) as an **adapter only** + one Laravel migration that applies `database/sql/library.sql`, on PostgreSQL 16 | The schema belongs to the migrations (ADR-001) |
 | D-04 | Concurrency | Atomic conditional `UPDATE` on the counter + `CHECK` range ([ADR-002](adr/adr-002-optimistic-concurrency.md)) | Last copy (RNF-2); needs no extra column |
 | D-05 | Dates | UTC instants (`timestamptz`); the clock is a port (`Clock`) | Test due dates without waiting 14 days |
 | D-06 | Report | One aggregated query through a read port ([ADR-004](adr/adr-004-aggregated-frozen-report.md)) | Stable and cheap |
